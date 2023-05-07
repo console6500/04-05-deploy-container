@@ -37,8 +37,16 @@ jobs:
           docker push ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ github.event.repository.name }}
 
       - name: Pause for Deployment to Begin
-        run: sleep 30
+        run: |
+          STATUS=$(aws apprunner describe-service --query="Service.Status" --output=text --service-arn="${{ vars.SERVICE_ARN }}")
 
+          until [ "${STATUS}" == "OPERATION_IN_PROGRESS" ];
+          do
+            echo "$(date) ${STATUS}"
+            STATUS=$(aws apprunner describe-service --query="Service.Status" --output=text --service-arn="${{ vars.SERVICE_ARN }}")
+            sleep 30;
+          done
+          
       - name: Wait for Deployment Status
         id: status
         timeout-minutes: 10
@@ -49,7 +57,7 @@ jobs:
           do
             echo "$(date) ${STATUS}"
             STATUS=$(aws apprunner describe-service --query="Service.Status" --output=text --service-arn="${{ vars.SERVICE_ARN }}")
-            sleep 15;
+            sleep 30;
           done
           echo "deployment_status=${STATUS}" >> "$GITHUB_OUTPUT"
 
